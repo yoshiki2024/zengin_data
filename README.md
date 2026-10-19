@@ -133,3 +133,11 @@ npm run build
 ## 📄 ライセンス
 
 MIT License
+
+---
+
+## 👤 作成者・オープンソース情報
+
+- **Author**: yoshiki2024
+- **GitHub**: [https://github.com/yoshiki2024/PDF_Studio](https://github.com/yoshiki2024/PDF_Studio)
+- **License**: MIT License
