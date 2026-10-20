@@ -11,6 +11,41 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body class="bg-notion-subtle text-notion-text antialiased selection:bg-notion-hover min-h-screen">
+    <!-- ローカル直接ダブルクリック時の案内スクリプト（Vite開発サーバー稼働時は無視されます） -->
+    <script>
+      // トップの index.html をローカル直接ダブルクリックした場合のみ案内を表示
+      // （完成版の「全銀データ作成ツール.html」を開いた時や開発サーバー時は通常のアプリが起動します）
+      const isFile = window.location.protocol === 'file:';
+      const isIndexHtml = /[\\\/]index\.html$/i.test(window.location.pathname) && !window.location.pathname.includes('/dist/') && !window.location.pathname.includes('\\dist\\');
+      if (isFile && isIndexHtml) {
+        window.addEventListener('DOMContentLoaded', function() {
+          document.body.innerHTML = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 85vh; text-align: center; padding: 24px; background: #FAF9F6;">
+              <div style="background: white; border: 1px solid #E9E9E7; border-radius: 16px; padding: 40px 32px; max-width: 580px; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
+                <div style="font-size: 48px; margin-bottom: 16px;">💡</div>
+                <h2 style="color: #37352F; margin: 0 0 12px; font-size: 22px; font-weight: 700;">こちらは「開発用」のファイルです</h2>
+                <p style="color: #787774; font-size: 14px; line-height: 1.7; margin: 0 0 24px;">
+                  全銀データ作成ツールをブラウザで利用するには、同じフォルダ内にある<br>
+                  <strong style="color: #2383E2; font-size: 16px;">「全銀データ作成ツール.html」</strong><br>
+                  をダブルクリックして開いてください。
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                  <a href="./全銀データ作成ツール.html" style="display: inline-flex; align-items: center; justify-content: center; background: #2383E2; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(35, 131, 226, 0.3);">
+                    全銀データ作成ツールを開く →
+                  </a>
+                  <a href="./dist/index.html" style="display: inline-flex; align-items: center; justify-content: center; background: #F7F6F3; color: #37352F; border: 1px solid #E9E9E7; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: 500; font-size: 13px;">
+                    distフォルダのファイルを開く
+                  </a>
+                </div>
+                <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #F0F0EE; font-size: 12px; color: #9B9A97; line-height: 1.5;">
+                  ※このファイル（index.html）は開発者がプログラムを変更・ビルドする際に必要なファイルです。削除せずにそのままにしておいてください。
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      }
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
