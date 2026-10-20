@@ -1,6 +1,7 @@
 /**
  * 全銀協フォーマット用 文字正規化・半角カナ変換ユーティリティ
  */
+import Encoding from 'encoding-japanese';
 
 // ひらがな・全角カタカナ小文字の大文字化マップ
 const SMALL_KANA_MAP: Record<string, string> = {
@@ -52,19 +53,68 @@ const ZENKAKU_KANA_MAP: Record<string, string> = {
   '（': '(', '）': ')', '／': '/', '￥': '\\'
 };
 
+// 法人略称の自動置換マップ（全銀協規定略称）
+export const CORPORATE_ABBR_MAP: [RegExp, string][] = [
+  [/株式会社/g, '(ｶ)'],
+  [/有限会社/g, '(ﾕ)'],
+  [/合同会社/g, '(ﾄﾞ)'],
+  [/合資会社/g, '(ｼ)'],
+  [/合名会社/g, '(ﾒ)'],
+  [/医療法人社団/g, '(ｲ)'],
+  [/医療法人財団/g, '(ｲ)'],
+  [/医療法人/g, '(ｲ)'],
+  [/社会福祉法人/g, '(ﾌｸ)'],
+  [/学校法人/g, '(ｶﾞｸ)'],
+  [/一般社団法人/g, '(ｼｬ)'],
+  [/公益社団法人/g, '(ｼｬ)'],
+  [/一般財団法人/g, '(ｻﾞｲ)'],
+  [/公益財団法人/g, '(ｻﾞｲ)'],
+  [/特定非営利活動法人/g, '(ﾄｸﾋ)'],
+  [/ＮＰＯ法人/gi, '(ﾄｸﾋ)'],
+  [/NPO法人/gi, '(ﾄｸﾋ)'],
+];
+
+// 銀行名・支店名によくある漢字の変換マップ
+export const BANK_KANJI_MAP: [RegExp, string][] = [
+  [/銀行/g, ''],
+  [/本店/g, 'ﾎﾝﾃﾝ'],
+  [/支店/g, 'ｼﾃﾝ'],
+  [/出張所/g, 'ｼﾕﾂﾁﾖｳｼﾞﾖ'],
+  [/営業部/g, 'ｴｲｷﾞﾖｳﾌﾞ'],
+  [/みずほ/g, 'ﾐｽﾞﾎ'],
+  [/三菱[ＵU][ＦF][ＪJ]/g, 'ﾐﾂﾋﾞｼUFJ'],
+  [/三井住友/g, 'ﾐﾂｲｽﾐﾄﾓ'],
+  [/りそな/g, 'ﾘｿﾅ'],
+  [/埼玉りそな/g, 'ｻｲﾀﾏﾘｿﾅ'],
+  [/ゆうちょ/g, 'ﾕｳﾁﾖ'],
+  [/楽天/g, 'ﾗｸﾃﾝ'],
+  [/住信[ＳS][ＢB][ＩI]/g, 'ｽﾐｼﾝSBI'],
+  [/PayPay|ＰａｙＰａｙ/g, 'ﾍﾟｲﾍﾟｲ'],
+  [/あおぞら/g, 'ｱｵｿﾞﾗ'],
+  [/新生/g, 'ｼﾝｾｲ'],
+];
+
 /**
  * 全銀標準仕様に準拠した文字正規化
- * 1. ひらがなをカタカナに変換
- * 2. 促音・拗音などの小文字は大文字に変換（例: ｯ -> ﾂ, ｬ -> ﾔ）
- * 3. 全角英数を半角化、小文字英字は大文字へ変換 (例: abc -> ABC)
- * 4. 全角カナを半角カナに変換
- * 5. 全銀協で使用可能な文字（半角カナ、半角英大文字、半角数字、一部記号 ()-./¥ スペース）にフィルタリング
+ * 1. 法人略称の変換（株式会社 -> (ｶ) 等）
+ * 2. ひらがなをカタカナに変換
+ * 3. 促音・拗音などの小文字は大文字に変換（例: ｯ -> ﾂ, ｬ -> ﾔ）
+ * 4. 全角英数を半角化、小文字英字は大文字へ変換 (例: abc -> ABC)
+ * 5. 全角カナを半角カナに変換
+ * 6. ハイフン類の半角化
  */
 export function normalizeZenginString(input: string): string {
   if (!input) return '';
 
+  let text = input;
+
+  // 法人略称の自動変換
+  for (const [re, abbr] of CORPORATE_ABBR_MAP) {
+    text = text.replace(re, abbr);
+  }
+
   // 1. ひらがなをカタカナに変換
-  let text = hiraganaToKatakana(input);
+  text = hiraganaToKatakana(text);
 
   // 2. 小文字カナを大文字カナに変換
   text = text.replace(/[ぁ-ょァ-ョｧ-ｮヵヶ]/g, (ch) => SMALL_KANA_MAP[ch] || ch);
@@ -80,13 +130,36 @@ export function normalizeZenginString(input: string): string {
     text = text.split(zen).join(han);
   }
 
-  // 6. 残った文字のうち全銀フォーマット許容文字以外を安全に置換または除去
-  // 許容文字: 半角数字 0-9, 半角英大文字 A-Z, 半角カナ ｦ-ﾟ, 記号 ()-./\ および半角スペース
-  // ハイフン類似文字の半角ハイフン化
+  // 6. ハイフン類似文字の半角ハイフン化
   text = text.replace(/[―ー–−―-]/g, '-');
 
-  // 全銀で使用不可の文字（例: 株式会社などの漢字が入っている場合）の案内用
   return text;
+}
+
+/**
+ * 銀行名・支店名専用の正規化
+ * 全銀協の規定では「銀行名・支店名は省略可（全桁半角スペース）」。
+ * 漢字が含まれている場合は一般的な名称を半角カナに変換し、
+ * それでも全銀規定外文字（未知の漢字など）が残る場合は、
+ * 120バイト崩壊や銀行側エラーを100%防止するため「全桁半角スペース（省略）」に安全フォールバックする。
+ */
+export function normalizeBankOrBranchName(input: string): string {
+  if (!input) return '';
+
+  let text = input;
+  for (const [re, rep] of BANK_KANJI_MAP) {
+    text = text.replace(re, rep);
+  }
+
+  const normalized = normalizeZenginString(text);
+  const check = isValidZenginChars(normalized);
+
+  // 全銀で許可されない文字（漢字など）がまだ残っている場合は、全銀協の仕様通り省略（スペース）
+  if (!check.valid) {
+    return '';
+  }
+
+  return normalized;
 }
 
 /**
@@ -116,19 +189,55 @@ export function isValidZenginChars(str: string): { valid: boolean; invalidChars:
 }
 
 /**
- * 指定文字数でパディング（数字は右詰めゼロ埋め、カナ・英字は左詰めスペース埋め）
- * ※バイト数ではなく半角1文字=1バイトを前提（正規化済みの文字列）
+ * Shift_JIS での正確なバイト数を取得
  */
-export function padRight(str: string, length: number, padChar: string = ' '): string {
-  if (str.length >= length) {
-    return str.slice(0, length);
-  }
-  return str + padChar.repeat(length - str.length);
+export function getSjisByteLength(str: string): number {
+  if (!str) return 0;
+  const unicodeArray = Encoding.stringToCode(str);
+  const sjisArray = Encoding.convert(unicodeArray, {
+    to: 'SJIS',
+    from: 'UNICODE',
+  });
+  return sjisArray.length;
 }
 
-export function padLeft(str: string, length: number, padChar: string = '0'): string {
-  if (str.length >= length) {
-    return str.slice(str.length - length);
+/**
+ * Shift_JISバイト数基準で右スペース埋め（左詰め）
+ * targetBytes を絶対に超過しないよう安全にスライスし、不足分を半角スペースでパディング
+ */
+export function padRightBytes(str: string, targetBytes: number, padChar: string = ' '): string {
+  if (!str) return padChar.repeat(targetBytes);
+
+  let current = '';
+  for (const ch of str) {
+    const next = current + ch;
+    if (getSjisByteLength(next) > targetBytes) {
+      break;
+    }
+    current = next;
   }
-  return padChar.repeat(length - str.length) + str;
+
+  const currentBytes = getSjisByteLength(current);
+  const remaining = Math.max(0, targetBytes - currentBytes);
+  return current + padChar.repeat(remaining);
 }
+
+/**
+ * Shift_JISバイト数基準で左ゼロ埋め（右詰め）
+ */
+export function padLeftBytes(str: string, targetBytes: number, padChar: string = '0'): string {
+  if (!str) return padChar.repeat(targetBytes);
+
+  let current = str;
+  while (getSjisByteLength(current) > targetBytes) {
+    current = current.slice(1);
+  }
+
+  const currentBytes = getSjisByteLength(current);
+  const remaining = Math.max(0, targetBytes - currentBytes);
+  return padChar.repeat(remaining) + current;
+}
+
+// 既存互換用
+export const padRight = padRightBytes;
+export const padLeft = padLeftBytes;
